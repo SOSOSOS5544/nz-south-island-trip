@@ -441,10 +441,6 @@ function setActiveTab(tabId) {
 }
 
 function renderHero() {
-  document.querySelector("#hero-meta").innerHTML = `
-    <div class="meta-chip">${state.data.period}</div>
-  `;
-
   document.querySelector("#hero-banner").innerHTML = `
     <div class="hero-banner-image hero-banner-image-full">
       <img
