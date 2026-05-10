@@ -445,21 +445,6 @@ function renderHero() {
     <div class="meta-chip">${state.data.period}</div>
   `;
 
-  document.querySelector("#trip-highlights").innerHTML = `
-    <div class="stat-row">
-      <span>旅程節奏</span>
-      <strong>賞景打卡風景明信片之旅</strong>
-    </div>
-    <div class="stat-row">
-      <span>固定生存開銷</span>
-      <strong>${state.data.costs.fixedSubtotal}</strong>
-    </div>
-    <div class="stat-row">
-      <span>離線備用預算</span>
-      <strong>${state.data.costs.flexibleBudget}</strong>
-    </div>
-  `;
-
   document.querySelector("#hero-banner").innerHTML = `
     <div class="hero-banner-image hero-banner-image-full">
       <img
@@ -473,7 +458,7 @@ function renderHero() {
         <h2>${state.data.title}</h2>
         <div class="hero-cover-meta">
           <span>${state.data.period}</span>
-          <span>Scenic Postcard Road Trip</span>
+          <span>賞景打卡風景明信片之旅</span>
         </div>
       </div>
     </div>
