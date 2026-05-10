@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>紐西蘭南島旅遊行程</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="stylesheet" href="./styles.css?v=6" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">旅伴共用版</p>
+          <h1>2026 紐西蘭南島房車旅遊</h1>
+          <div class="hero-meta" id="hero-meta"></div>
+        </div>
+        <div class="hero-card">
+          <p class="card-kicker">旅程節奏</p>
+          <div id="trip-highlights"></div>
+        </div>
+      </header>
+      <section class="hero-banner surface" id="hero-banner"></section>
+
+      <nav class="tabbar" id="tabbar"></nav>
+
+      <main>
+        <section class="panel active" id="panel-overview"></section>
+        <section class="panel" id="panel-itinerary"></section>
+        <section class="panel" id="panel-flights"></section>
+        <section class="panel" id="panel-map"></section>
+        <section class="panel" id="panel-offline"></section>
+        <section class="panel" id="panel-editor"></section>
+      </main>
+    </div>
+
+    <script src="./trip-data.js?v=6"></script>
+    <script src="./script.js?v=6"></script>
+  </body>
+</html>
