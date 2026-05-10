@@ -3,11 +3,11 @@ window.defaultTripData = {
   period: "2026/5/31 - 2026/6/13",
   travelers: "5 人同行，南島租房車，南北島轉移以飛機為主",
   heroImage: {
-    url: "https://source.unsplash.com/featured/1600x900/?new-zealand,south-island,mountains,lake",
+    url: "images/hero/home-hero.png",
     alt: "紐西蘭南島山湖風景"
   },
   overviewImage: {
-    url: "https://source.unsplash.com/featured/1200x1600/?new-zealand,south-island,mountains,lake",
+    url: "images/overview/overview-cover.png",
     alt: "紐西蘭南島旅遊手冊封面"
   },
   posterStyle: {
@@ -126,7 +126,7 @@ window.defaultTripData = {
       title: "Auckland Airport",
       highlight: {
         title: "Auckland Airport Arrival Day",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?airport,new-zealand,travel",
+        imageUrl: "images/days/day-01.png",
         caption: "以機場集合與輕鬆暖身為主，重點是順利接上所有人與把第一晚節奏放慢。",
         prompt:
           "Auckland international airport arrival lounge and runway at golden hour, travelers reuniting with luggage, calm premium travel poster, cinematic editorial composition, polished glass reflections, soft emerald and cream palette, realistic detail, clean negative space for title"
@@ -198,7 +198,7 @@ window.defaultTripData = {
       title: "Auckland Airport → Christchurch",
       highlight: {
         title: "Willowbank Wildlife Reserve",
-        imageUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/General%20view%20-%20Willowbank%20Wildlife%20Reserve%20-%20Christchurch%2C%20NZ%20-%20DSC01533.jpg",
+        imageUrl: "images/days/day-02.png",
         caption: "第二天的大景點先鎖定基督城的 Willowbank Wildlife Reserve，和剛落地南島的輕鬆節奏很搭。",
         prompt:
           "Willowbank Wildlife Reserve in Christchurch, lush pathways, native birds and family-friendly wildlife setting, cinematic eco-travel poster, editorial layout, natural greens, warm afternoon light, realistic animal sanctuary mood, premium tourism campaign style"
@@ -269,7 +269,7 @@ window.defaultTripData = {
       title: "Christchurch → Lake Tekapo",
       highlight: {
         title: "Lake Tekapo",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?lake-tekapo,new-zealand",
+        imageUrl: "images/days/day-03.png",
         caption: "提卡波湖這天的主視覺應該就是湖色、教堂與山線，整天都很適合做成風景主題。",
         prompt:
           "Lake Tekapo turquoise water, Church of the Good Shepherd, distant snowy mountains, cinematic South Island poster, editorial travel campaign, refined composition, dramatic sky, ultra-detailed landscape, elegant negative space for typography"
@@ -365,7 +365,7 @@ window.defaultTripData = {
       title: "Lake Tekapo + Mount Cook",
       highlight: {
         title: "Aoraki / Mount Cook",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?mount-cook,new-zealand",
+        imageUrl: "images/days/day-04.png",
         caption: "庫克山這天的重點很明確，就是雪峰、步道與冰河感。",
         prompt:
           "Aoraki Mount Cook towering snowy peak, alpine valley trail and glacier mood, cinematic expedition poster, cool blue and silver palette, bold realistic mountain textures, premium editorial travel art, atmospheric depth, high drama"
@@ -440,7 +440,7 @@ window.defaultTripData = {
       title: "Mount Cook Highway → Queenstown",
       highlight: {
         title: "Queenstown Arrival",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?queenstown,new-zealand,lake",
+        imageUrl: "images/days/day-05.png",
         caption: "到皇后鎮的第一天可以用湖景和小鎮到站感做主視覺。",
         prompt:
           "Queenstown arrival scene overlooking Lake Wakatipu and alpine town lights, cinematic travel poster, elegant editorial balance, premium destination campaign, rich lake blues, mountain silhouette, polished realism"
@@ -502,7 +502,7 @@ window.defaultTripData = {
       title: "Queenstown",
       highlight: {
         title: "Skyline Queenstown",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?queenstown,gondola,new-zealand",
+        imageUrl: "images/days/day-06.png",
         caption: "皇后鎮整天的代表畫面可以直接抓纜車、山景和湖景。",
         prompt:
           "Skyline Queenstown gondola above Lake Wakatipu, sweeping alpine panorama, luxury adventure poster, editorial typography space, cinematic sunset light, dynamic but clean composition, realistic destination advertising style"
@@ -556,7 +556,7 @@ window.defaultTripData = {
       title: "Queenstown → Te Anau",
       highlight: {
         title: "Glenorchy / Te Anau Day",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?glenorchy,new-zealand,road",
+        imageUrl: "images/days/day-07.png",
         caption: "這一天可以用路線感很強的山谷公路或 Glenorchy 風景圖。",
         prompt:
           "Glenorchy road trip through valley and lake edge, cinematic road adventure poster, South Island scenery, editorial composition, wide open road, moody clouds, premium realistic travel campaign, subtle retro print feeling"
@@ -632,7 +632,7 @@ window.defaultTripData = {
       title: "Milford Sound",
       highlight: {
         title: "Milford Sound",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?milford-sound,new-zealand",
+        imageUrl: "images/days/day-08.png",
         caption: "米佛峽灣這天非常適合做成全景海峽主視覺。",
         prompt:
           "Milford Sound fjord with sheer cliffs, mist, dark water and dramatic clouds, iconic New Zealand travel poster, cinematic realism, luxury expedition campaign, deep emerald and slate palette, vast atmospheric scale"
@@ -703,7 +703,7 @@ window.defaultTripData = {
       title: "Milford Sound → Queenstown",
       highlight: {
         title: "Queenstown Flex Day",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?queenstown,hiking,new-zealand",
+        imageUrl: "images/days/day-09.png",
         caption: "回皇后鎮的彈性日可以放半日步道或湖邊風景圖。",
         prompt:
           "Queenstown flex day on peninsula trail with lake and mountains, cinematic slow-travel poster, editorial travel magazine style, soft adventure mood, realistic hiker scale, airy premium composition"
@@ -766,7 +766,7 @@ window.defaultTripData = {
       title: "Queenstown → Dunedin",
       highlight: {
         title: "Dunedin City & Blue Penguins",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?dunedin,new-zealand,station",
+        imageUrl: "images/days/day-10.png",
         caption: "但尼丁這天的視覺可以走城市建築感或企鵝主題。",
         prompt:
           "Dunedin historic station and coastal wildlife mood, cinematic city-meets-nature poster, Victorian architecture, cool coastal light, premium editorial layout, realistic New Zealand heritage travel campaign"
@@ -855,7 +855,7 @@ window.defaultTripData = {
       title: "Dunedin → Oamaru",
       highlight: {
         title: "Oamaru",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?oamaru,new-zealand,coast",
+        imageUrl: "images/days/day-11.png",
         caption: "Oamaru 很適合用海邊、白石街區或企鵝觀察點做大圖。",
         prompt:
           "Oamaru limestone heritage street meeting wild coastline, elegant New Zealand coastal poster, editorial composition, nostalgic light, premium realistic tourism art, soft sea mist and stone textures"
@@ -914,7 +914,7 @@ window.defaultTripData = {
       title: "Oamaru → Christchurch",
       highlight: {
         title: "Christchurch City Day",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?christchurch,new-zealand,tram",
+        imageUrl: "images/days/day-12.png",
         caption: "基督城回合可用植物園、復古電車或河濱市場當主視覺。",
         prompt:
           "Christchurch tram passing through city center with gardens and riverside vibe, polished editorial travel poster, cinematic daylight, realistic urban charm, premium tourism campaign art, balanced typography space"
@@ -993,7 +993,7 @@ window.defaultTripData = {
       title: "Christchurch → Auckland",
       highlight: {
         title: "Return to Auckland",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?auckland,new-zealand,skyline",
+        imageUrl: "images/days/day-13.png",
         caption: "回到奧克蘭這天適合用城市夜景或機場轉場的收尾感。",
         prompt:
           "Auckland skyline and airport return mood, cinematic city travel poster, polished evening glow, premium editorial composition, realistic urban New Zealand atmosphere, elegant campaign finish"
@@ -1059,7 +1059,7 @@ window.defaultTripData = {
       title: "Auckland → 回家",
       highlight: {
         title: "Departure Day",
-        imageUrl: "https://source.unsplash.com/featured/1200x700/?travel,departure,airport",
+        imageUrl: "images/days/day-14.png",
         caption: "最後一天可以用簡潔的離境與返程畫面做結尾。",
         prompt:
           "international departure gate scene with runway light and quiet farewell mood, minimalist cinematic travel poster, realistic airport atmosphere, soft teal and gold palette, elegant ending composition"

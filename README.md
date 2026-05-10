@@ -18,6 +18,29 @@ Images you upload in the browser are stored locally first.
 
 To make those images visible on the public GitHub Pages site, you must export the GitHub Pages data file and replace `trip-data.js` before pushing.
 
+## Shared image folders
+
+If you want images to appear on the public GitHub Pages site reliably, put the files directly in this repo:
+
+- `images/hero/`
+- `images/overview/`
+- `images/days/`
+
+Suggested naming:
+
+- `images/hero/home-hero.webp`
+- `images/overview/overview-cover.webp`
+- `images/days/day-01.webp`
+- `images/days/day-02.webp`
+
+Then set those paths in the site data, for example:
+
+- `images/hero/home-hero.webp`
+- `images/overview/overview-cover.webp`
+- `images/days/day-05.webp`
+
+Anything saved only in the browser editor is local to your device. Anything placed in the repo and pushed to GitHub can be seen by other people.
+
 ## GitHub Pages setup
 
 1. Create a GitHub repository and push this folder.
@@ -37,4 +60,3 @@ The public site updates only after you:
 1. export the shareable data
 2. replace `trip-data.js`
 3. commit and push
-
