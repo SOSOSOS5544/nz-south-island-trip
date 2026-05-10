@@ -1,4 +1,4 @@
-const STORAGE_KEY = "nz-south-island-trip-data-v2";
+const STORAGE_KEY = "nz-south-island-trip-data-v3";
 const IMAGE_DB_NAME = "nz-south-island-trip-images";
 const IMAGE_STORE_NAME = "images";
 const IMAGE_REF_PREFIX = "idb-image:";
