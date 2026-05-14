@@ -540,25 +540,7 @@ function renderOverview() {
       `
     )
     .join("");
-  const tags = state.data.tags
-    .map(
-      (tag) => `
-        <div class="legend-card">
-          <span class="legend-dot" style="background:${tag.color}"></span>
-          <div>
-            <strong>${tag.label}</strong>
-            <p>行程卡、地圖卡與編輯器都會沿用這些標記。</p>
-          </div>
-        </div>
-      `
-    )
-    .join("");
-
   const requiredCosts = state.data.costs.required
-    .map(([name, price]) => `<li><span>${name}</span><strong>${price}</strong></li>`)
-    .join("");
-
-  const extras = state.data.costs.extras
     .map(([name, price]) => `<li><span>${name}</span><strong>${price}</strong></li>`)
     .join("");
 
@@ -594,16 +576,10 @@ function renderOverview() {
       </div>
     </article>
 
-    <div class="grid two-up overview-notes">
-      <article class="surface journal-panel">
-        <h2>${state.data.overview?.journalTitle || "這趟旅程"}</h2>
-        <div class="journal-list">${journalRows}</div>
-      </article>
-      <article class="surface journal-panel">
-        <h2>${state.data.overview?.sectionTitles?.tags || "Tag 圖例"}</h2>
-        <div class="legend-list">${tags}</div>
-      </article>
-    </div>
+    <article class="surface journal-panel">
+      <h2>${state.data.overview?.journalTitle || "這趟旅程"}</h2>
+      <div class="journal-list">${journalRows}</div>
+    </article>
 
     <article class="surface">
       <h2>${state.data.overview?.sectionTitles?.preTrip || "行前整理"}</h2>
@@ -621,16 +597,10 @@ function renderOverview() {
       </div>
     </article>
 
-    <div class="grid two-up">
-      <article class="surface">
-        <h2>${state.data.overview?.sectionTitles?.requiredCosts || "必須花費"}</h2>
-        <ul class="price-list">${requiredCosts}</ul>
-      </article>
-      <article class="surface">
-        <h2>${state.data.overview?.sectionTitles?.extras || "額外活動"}</h2>
-        <ul class="price-list">${extras}</ul>
-      </article>
-    </div>
+    <article class="surface">
+      <h2>${state.data.overview?.sectionTitles?.requiredCosts || "必須花費"}</h2>
+      <ul class="price-list">${requiredCosts}</ul>
+    </article>
 
     <article class="surface">
       <h2>${state.data.overview?.sectionTitles?.fieldBudget || "現場花費預估"}</h2>
