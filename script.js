@@ -26,6 +26,8 @@ const state = {
   dayIndex: 0,
   mapEventIndex: 0,
   editorDayIndex: 0,
+  editorDirty: false,
+  lastSavedAt: null,
   dayNavScroll: {
     itinerary: 0,
     map: 0,
@@ -117,6 +119,48 @@ function loadData() {
 
 function saveData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
+  state.editorDirty = false;
+  state.lastSavedAt = Date.now();
+}
+
+function formatSavedAt() {
+  if (!state.lastSavedAt) {
+    return "尚未儲存";
+  }
+
+  return `已儲存 ${new Date(state.lastSavedAt).toLocaleTimeString("zh-Hant", {
+    hour: "2-digit",
+    minute: "2-digit"
+  })}`;
+}
+
+function updateEditorSaveState() {
+  const status = panelMap.editor.querySelector("#editor-save-status");
+  if (!status) {
+    return;
+  }
+
+  status.textContent = state.editorDirty ? "尚未儲存" : formatSavedAt();
+  status.classList.toggle("dirty", state.editorDirty);
+}
+
+function markEditorDirty() {
+  state.editorDirty = true;
+  updateEditorSaveState();
+}
+
+function attachEditorDirtyTracking() {
+  panelMap.editor
+    .querySelectorAll("input, textarea, select")
+    .forEach((field) => {
+      if (field.id === "raw-json-editor") {
+        field.addEventListener("input", markEditorDirty);
+        return;
+      }
+
+      field.addEventListener("input", markEditorDirty);
+      field.addEventListener("change", markEditorDirty);
+    });
 }
 
 function isStoredImageRef(value) {
@@ -1044,6 +1088,15 @@ function renderEditor() {
   const day = state.data.itinerary[state.editorDayIndex];
   panelMap.editor.innerHTML = `
     <div class="surface">
+      <div class="editor-savebar">
+        <div class="editor-savecopy">
+          <strong>編輯狀態</strong>
+          <span id="editor-save-status" class="save-status ${state.editorDirty ? "dirty" : ""}">
+            ${state.editorDirty ? "尚未儲存" : formatSavedAt()}
+          </span>
+        </div>
+        <button class="action-button small" id="save-all-button">儲存全部編輯</button>
+      </div>
       <div class="editor-toolbar">
         <button class="action-button small" id="save-json-button">套用整份 JSON</button>
         <button class="action-button ghost small" id="export-json-button">匯出 JSON</button>
@@ -1191,7 +1244,7 @@ function renderEditor() {
         </div>
       </div>
       <div class="editor-toolbar">
-        <button class="action-button small" id="save-day-button">儲存這一天</button>
+        <button class="action-button small" id="save-day-button">儲存全部編輯</button>
         <button class="action-button ghost small" id="add-event-button">新增景點 / 備註</button>
       </div>
       <div class="editor-event-list">
@@ -1244,7 +1297,10 @@ function renderEditor() {
   attachEditorDayNavListeners(panelMap.editor);
   attachImageFallbacks(panelMap.editor);
   bindDayNavState(panelMap.editor, "editor");
+  attachEditorDirtyTracking();
+  updateEditorSaveState();
 
+  panelMap.editor.querySelector("#save-all-button").addEventListener("click", saveDayEdits);
   panelMap.editor.querySelector("#save-day-button").addEventListener("click", saveDayEdits);
   panelMap.editor.querySelector("#add-event-button").addEventListener("click", addEventToDay);
   panelMap.editor.querySelector("#save-json-button").addEventListener("click", applyRawJson);
