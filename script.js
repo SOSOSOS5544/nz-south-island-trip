@@ -844,6 +844,17 @@ function renderFlights() {
     )
     .join("");
 
+  const paidLinkCards = (state.data.costs.paidLinks || [])
+    .map(
+      (item) => `
+        <article class="mini-card">
+          <strong>${item.title}</strong>
+          <p><a class="inline-link" href="${item.url}" target="_blank" rel="noreferrer">${item.label}</a></p>
+        </article>
+      `
+    )
+    .join("");
+
   panelMap.flights.innerHTML = `
     <div class="grid two-up">
       <article class="surface">
@@ -870,6 +881,7 @@ function renderFlights() {
               `
             )
             .join("")}
+          ${paidLinkCards}
         </div>
       </article>
       <article class="surface">

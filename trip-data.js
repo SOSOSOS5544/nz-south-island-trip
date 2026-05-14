@@ -90,6 +90,13 @@ window.defaultTripData = {
       ["皇后鎮 Ice bar 體驗", "$40"]
     ],
     alreadyPaid: [["Apollo 6人房車", "$568.11 / 人", "總額 $2,840.55"]],
+    paidLinks: [
+      {
+        title: "Line分賬程序",
+        label: "開啟 Line 分賬連結",
+        url: "https://liff.line.me/1655320992-Y8GowEpw/g/fgmgnbqBe3DsSKHK7mizpm"
+      }
+    ],
     fieldBudget: [
       ["燃料費 (柴油)", "NZD 800", "$160", "6人座車重，冬天暖氣也可能用到油。"],
       ["柴油稅 (RUC)", "NZD 220", "$44", "以 2,200 公里預估還車時要付的錢。"],
