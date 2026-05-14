@@ -707,6 +707,15 @@ function renderLinks(links) {
   `;
 }
 
+function scrollMapPanelIntoView() {
+  const target = panelMap.map.querySelector(".map-panel") || panelMap.map;
+  if (!target) {
+    return;
+  }
+
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function eventActionButtons(eventIndex, event) {
   return `
     <div class="action-row">
@@ -809,6 +818,9 @@ function attachDayNavListeners(root) {
       renderMap();
       renderOffline();
       renderEditor();
+      if (root === panelMap.map) {
+        scrollMapPanelIntoView();
+      }
     });
   });
 }
@@ -833,6 +845,7 @@ function attachEventJumpListeners(root) {
       state.mapEventIndex = Number(button.dataset.mapTab);
       renderMap();
       setActiveTab("map");
+      scrollMapPanelIntoView();
     });
   });
 
@@ -1005,6 +1018,7 @@ function renderMap() {
     button.addEventListener("click", () => {
       state.mapEventIndex = Number(button.dataset.mapFocus);
       renderMap();
+      scrollMapPanelIntoView();
     });
   });
   attachImageFallbacks(panelMap.map);
