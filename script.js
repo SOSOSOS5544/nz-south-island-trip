@@ -26,6 +26,12 @@ const state = {
   dayIndex: 0,
   mapEventIndex: 0,
   editorDayIndex: 0,
+  dayNavScroll: {
+    itinerary: 0,
+    map: 0,
+    offline: 0,
+    editor: 0
+  },
   imageCache: {},
   imageMetaCache: {},
   pendingImageLoads: new Set(),
@@ -44,11 +50,23 @@ function hydrateData(stored) {
     ...stored,
     heroImage: { ...base.heroImage, ...(stored.heroImage || {}) },
     overviewImage: { ...(base.overviewImage || {}), ...(stored.overviewImage || {}) },
+    overview: {
+      ...(base.overview || {}),
+      ...(stored.overview || {}),
+      sectionTitles: {
+        ...(base.overview?.sectionTitles || {}),
+        ...(stored.overview?.sectionTitles || {})
+      }
+    },
     costs: { ...base.costs, ...(stored.costs || {}) },
     onlineNavigation: stored.onlineNavigation || base.onlineNavigation,
     offlineNavigation: stored.offlineNavigation || base.offlineNavigation,
     preTrip: Array.isArray(stored.preTrip) && stored.preTrip.length ? stored.preTrip : base.preTrip
   };
+
+  merged.overview.journalRows = Array.isArray(stored.overview?.journalRows) && stored.overview.journalRows.length
+    ? stored.overview.journalRows
+    : base.overview.journalRows;
 
   merged.itinerary = base.itinerary.map((baseDay, index) => {
     const savedDay = stored.itinerary?.[index] || {};
@@ -467,6 +485,17 @@ function renderOverview() {
   const overviewImageAlt = state.data.overviewImage?.alt || state.data.title;
   const overviewImageSrc = getImageSource(overviewImageValue, overviewImageAlt);
   const overviewImageLayoutClass = getImageLayoutClass(overviewImageValue, overviewImageSrc);
+  const overviewTitle = (state.data.overview?.coverTitle || state.data.title).split("\n").join("<br />");
+  const journalRows = (state.data.overview?.journalRows || [])
+    .map(
+      (row) => `
+        <div class="journal-row">
+          <strong>${row.label}</strong>
+          <p>${row.text}</p>
+        </div>
+      `
+    )
+    .join("");
   const tags = state.data.tags
     .map(
       (tag) => `
@@ -506,7 +535,7 @@ function renderOverview() {
     <article class="surface overview-cover">
       <div class="overview-copy">
         <p class="overview-kicker">${state.data.period}</p>
-        <h2 class="overview-title">2026 紐西蘭<br />自駕房車遊</h2>
+        <h2 class="overview-title">${overviewTitle}</h2>
       </div>
       <div class="overview-book">
         <div class="overview-book-spine"></div>
@@ -523,30 +552,17 @@ function renderOverview() {
 
     <div class="grid two-up overview-notes">
       <article class="surface journal-panel">
-        <h2>這趟旅程</h2>
-        <div class="journal-list">
-          <div class="journal-row">
-            <strong>旅行風格</strong>
-            <p>賞景打卡風景明信片之旅，節奏偏慢，重點放在每日大景與冬季氣氛。</p>
-          </div>
-          <div class="journal-row">
-            <strong>移動方式</strong>
-            <p>南島以房車為主，跨島與機場轉移用飛機，路線盡量讓每天都有可拍的代表景點。</p>
-          </div>
-          <div class="journal-row">
-            <strong>行前提醒</strong>
-            <p>保留地圖、離線導航、營地與景點連結，方便旅伴直接照網站使用。</p>
-          </div>
-        </div>
+        <h2>${state.data.overview?.journalTitle || "這趟旅程"}</h2>
+        <div class="journal-list">${journalRows}</div>
       </article>
       <article class="surface journal-panel">
-        <h2>Tag 圖例</h2>
+        <h2>${state.data.overview?.sectionTitles?.tags || "Tag 圖例"}</h2>
         <div class="legend-list">${tags}</div>
       </article>
     </div>
 
     <article class="surface">
-      <h2>行前整理</h2>
+      <h2>${state.data.overview?.sectionTitles?.preTrip || "行前整理"}</h2>
       <div class="mini-grid">
         ${state.data.preTrip
           .map(
@@ -563,17 +579,17 @@ function renderOverview() {
 
     <div class="grid two-up">
       <article class="surface">
-        <h2>必須花費</h2>
+        <h2>${state.data.overview?.sectionTitles?.requiredCosts || "必須花費"}</h2>
         <ul class="price-list">${requiredCosts}</ul>
       </article>
       <article class="surface">
-        <h2>額外活動</h2>
+        <h2>${state.data.overview?.sectionTitles?.extras || "額外活動"}</h2>
         <ul class="price-list">${extras}</ul>
       </article>
     </div>
 
     <article class="surface">
-      <h2>現場花費預估</h2>
+      <h2>${state.data.overview?.sectionTitles?.fieldBudget || "現場花費預估"}</h2>
       <div class="table-wrap">
         <table>
           <thead>
@@ -602,6 +618,22 @@ function renderDayNav(activeIndex, className = "day-chip") {
       `
     )
     .join("");
+}
+
+function bindDayNavState(root, key) {
+  const nav = root.querySelector(".day-nav");
+  if (!nav) {
+    return;
+  }
+
+  nav.scrollLeft = state.dayNavScroll[key] || 0;
+  nav.addEventListener(
+    "scroll",
+    () => {
+      state.dayNavScroll[key] = nav.scrollLeft;
+    },
+    { passive: true }
+  );
 }
 
 function renderLinks(links) {
@@ -703,11 +735,22 @@ function renderItinerary() {
   attachDayNavListeners(panelMap.itinerary);
   attachEventJumpListeners(panelMap.itinerary);
   attachImageFallbacks(panelMap.itinerary);
+  bindDayNavState(panelMap.itinerary, "itinerary");
 }
 
 function attachDayNavListeners(root) {
   root.querySelectorAll("[data-day-index]").forEach((button) => {
     button.addEventListener("click", () => {
+      const nav = root.querySelector(".day-nav");
+      if (nav) {
+        if (root === panelMap.itinerary) {
+          state.dayNavScroll.itinerary = nav.scrollLeft;
+        } else if (root === panelMap.map) {
+          state.dayNavScroll.map = nav.scrollLeft;
+        } else if (root === panelMap.offline) {
+          state.dayNavScroll.offline = nav.scrollLeft;
+        }
+      }
       state.dayIndex = Number(button.dataset.dayIndex);
       state.mapEventIndex = 0;
       renderItinerary();
@@ -721,6 +764,10 @@ function attachDayNavListeners(root) {
 function attachEditorDayNavListeners(root) {
   root.querySelectorAll("[data-day-index]").forEach((button) => {
     button.addEventListener("click", () => {
+      const nav = root.querySelector(".day-nav");
+      if (nav) {
+        state.dayNavScroll.editor = nav.scrollLeft;
+      }
       state.editorDayIndex = Number(button.dataset.dayIndex);
       renderEditor();
       setActiveTab("editor");
@@ -897,6 +944,7 @@ function renderMap() {
     });
   });
   attachImageFallbacks(panelMap.map);
+  bindDayNavState(panelMap.map, "map");
 }
 
 function renderOffline() {
@@ -964,6 +1012,7 @@ function renderOffline() {
       renderOffline();
     });
   });
+  bindDayNavState(panelMap.offline, "offline");
 }
 
 function parseLinks(text) {
@@ -1050,14 +1099,57 @@ function renderEditor() {
         <label>統一海報風標題<input id="edit-poster-style-title" value="${state.data.posterStyle.title}" /></label>
         <label>統一海報風 prompt<textarea id="edit-poster-style-prompt">${state.data.posterStyle.prompt}</textarea></label>
       </div>
+      <h2>總覽文案</h2>
+      <div class="editor-grid">
+        <label>總覽封面標題（可換行）
+          <textarea id="edit-overview-cover-title">${state.data.overview?.coverTitle || ""}</textarea>
+        </label>
+        <label>旅程摘要標題
+          <input id="edit-overview-journal-title" value="${state.data.overview?.journalTitle || ""}" />
+        </label>
+        <label>Tag 區標題
+          <input id="edit-overview-tags-title" value="${state.data.overview?.sectionTitles?.tags || ""}" />
+        </label>
+        <label>行前整理標題
+          <input id="edit-overview-pretrip-title" value="${state.data.overview?.sectionTitles?.preTrip || ""}" />
+        </label>
+        <label>必須花費標題
+          <input id="edit-overview-required-title" value="${state.data.overview?.sectionTitles?.requiredCosts || ""}" />
+        </label>
+        <label>額外活動標題
+          <input id="edit-overview-extras-title" value="${state.data.overview?.sectionTitles?.extras || ""}" />
+        </label>
+        <label>現場花費預估標題
+          <input id="edit-overview-budget-title" value="${state.data.overview?.sectionTitles?.fieldBudget || ""}" />
+        </label>
+        ${(state.data.overview?.journalRows || [])
+          .map(
+            (row, index) => `
+              <div class="editor-stack">
+                <label>摘要欄位標題 ${index + 1}
+                  <input data-overview-row-label="${index}" value="${row.label}" />
+                </label>
+                <label>摘要內容 ${index + 1}
+                  <textarea data-overview-row-text="${index}">${row.text}</textarea>
+                </label>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
       <h2>行前整理</h2>
       <div class="editor-grid">
         ${state.data.preTrip
           .map(
             (group, index) => `
-              <label>${group.title}（每行一項）
-                <textarea data-pretrip-index="${index}">${group.items.join("\n")}</textarea>
-              </label>
+              <div class="editor-stack">
+                <label>欄目標題
+                  <input data-pretrip-title-index="${index}" value="${group.title}" />
+                </label>
+                <label>${group.title} 內容（每行一項）
+                  <textarea data-pretrip-index="${index}">${group.items.join("\n")}</textarea>
+                </label>
+              </div>
             `
           )
           .join("")}
@@ -1151,6 +1243,7 @@ function renderEditor() {
   syncRawEditor();
   attachEditorDayNavListeners(panelMap.editor);
   attachImageFallbacks(panelMap.editor);
+  bindDayNavState(panelMap.editor, "editor");
 
   panelMap.editor.querySelector("#save-day-button").addEventListener("click", saveDayEdits);
   panelMap.editor.querySelector("#add-event-button").addEventListener("click", addEventToDay);
@@ -1271,6 +1364,23 @@ async function saveDayEdits() {
   };
   state.data.posterStyle.title = document.querySelector("#edit-poster-style-title").value.trim();
   state.data.posterStyle.prompt = document.querySelector("#edit-poster-style-prompt").value.trim();
+  state.data.overview = {
+    ...(state.data.overview || {}),
+    coverTitle: document.querySelector("#edit-overview-cover-title").value.trim(),
+    journalTitle: document.querySelector("#edit-overview-journal-title").value.trim(),
+    sectionTitles: {
+      ...(state.data.overview?.sectionTitles || {}),
+      tags: document.querySelector("#edit-overview-tags-title").value.trim(),
+      preTrip: document.querySelector("#edit-overview-pretrip-title").value.trim(),
+      requiredCosts: document.querySelector("#edit-overview-required-title").value.trim(),
+      extras: document.querySelector("#edit-overview-extras-title").value.trim(),
+      fieldBudget: document.querySelector("#edit-overview-budget-title").value.trim()
+    },
+    journalRows: (state.data.overview?.journalRows || []).map((row, index) => ({
+      label: document.querySelector(`[data-overview-row-label="${index}"]`)?.value.trim() || row.label,
+      text: document.querySelector(`[data-overview-row-text="${index}"]`)?.value.trim() || row.text
+    }))
+  };
   day.title = document.querySelector("#edit-day-title").value.trim();
   day.date = document.querySelector("#edit-day-date").value.trim();
   day.mode = document.querySelector("#edit-day-mode").value.trim();
@@ -1295,6 +1405,11 @@ async function saveDayEdits() {
       .split("\n")
       .map((item) => item.trim())
       .filter(Boolean);
+  });
+
+  document.querySelectorAll("[data-pretrip-title-index]").forEach((field) => {
+    const index = Number(field.dataset.pretripTitleIndex);
+    state.data.preTrip[index].title = field.value.trim() || state.data.preTrip[index].title;
   });
 
   document.querySelectorAll("[data-event-index]").forEach((field) => {

@@ -10,6 +10,31 @@ window.defaultTripData = {
     url: "images/overview/overview-cover.png",
     alt: "紐西蘭南島旅遊手冊封面"
   },
+  overview: {
+    coverTitle: "2026 紐西蘭\n自駕房車遊",
+    journalTitle: "這趟旅程",
+    journalRows: [
+      {
+        label: "旅行風格",
+        text: "賞景打卡風景明信片之旅，節奏偏慢，重點放在每日大景與冬季氣氛。"
+      },
+      {
+        label: "移動方式",
+        text: "南島以房車為主，跨島與機場轉移用飛機，路線盡量讓每天都有可拍的代表景點。"
+      },
+      {
+        label: "行前提醒",
+        text: "保留地圖、離線導航、營地與景點連結，方便旅伴直接照網站使用。"
+      }
+    ],
+    sectionTitles: {
+      tags: "Tag 圖例",
+      preTrip: "行前整理",
+      requiredCosts: "必須花費",
+      extras: "額外活動",
+      fieldBudget: "現場花費預估"
+    }
+  },
   posterStyle: {
     title: "South Island Editorial Poster Style",
     prompt:
