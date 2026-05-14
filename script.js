@@ -1054,6 +1054,15 @@ function syncRawEditor() {
   }
 }
 
+function rawJsonHasChanges() {
+  const raw = document.querySelector("#raw-json-editor");
+  if (!raw) {
+    return false;
+  }
+
+  return raw.value.trim() !== JSON.stringify(state.data, null, 2).trim();
+}
+
 function renderEditor() {
   const day = state.data.itinerary[state.editorDayIndex];
   panelMap.editor.innerHTML = `
@@ -1270,8 +1279,8 @@ function renderEditor() {
   attachEditorDirtyTracking();
   updateEditorSaveState();
 
-  panelMap.editor.querySelector("#save-all-button").addEventListener("click", saveDayEdits);
-  panelMap.editor.querySelector("#save-day-button").addEventListener("click", saveDayEdits);
+  panelMap.editor.querySelector("#save-all-button").addEventListener("click", saveEditorChanges);
+  panelMap.editor.querySelector("#save-day-button").addEventListener("click", saveEditorChanges);
   panelMap.editor.querySelector("#add-event-button").addEventListener("click", addEventToDay);
   panelMap.editor.querySelector("#save-json-button").addEventListener("click", applyRawJson);
   panelMap.editor.querySelector("#export-json-button").addEventListener("click", exportJson);
@@ -1457,6 +1466,15 @@ async function saveDayEdits() {
   setActiveTab("editor");
 }
 
+async function saveEditorChanges() {
+  if (rawJsonHasChanges()) {
+    applyRawJson();
+    return;
+  }
+
+  await saveDayEdits();
+}
+
 function addEventToDay() {
   state.data.itinerary[state.editorDayIndex].events.push({
     time: "待補",
@@ -1477,7 +1495,7 @@ function addEventToDay() {
 function applyRawJson() {
   const raw = document.querySelector("#raw-json-editor").value;
   try {
-    state.data = JSON.parse(raw);
+    state.data = hydrateData(JSON.parse(raw));
     state.dayIndex = 0;
     state.mapEventIndex = 0;
     state.editorDayIndex = 0;
