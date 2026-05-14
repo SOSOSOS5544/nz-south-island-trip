@@ -8,9 +8,12 @@ const IMAGE_DB_NAME = "nz-south-island-trip-images";
 const IMAGE_STORE_NAME = "images";
 const IMAGE_REF_PREFIX = "idb-image:";
 const GOOGLE_SHEET_ID = "16Lw_wvC0brbbkvOyXk4X1OIxyhGj2vKizif2kIgxuDA";
-const GOOGLE_SHEET_GID = "103924319";
-const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit?gid=${GOOGLE_SHEET_GID}#gid=${GOOGLE_SHEET_GID}`;
-const GOOGLE_SHEET_TSV_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/export?format=tsv&gid=${GOOGLE_SHEET_GID}`;
+const GOOGLE_SHEET_META_GID = "103924319";
+const GOOGLE_SHEET_ITINERARY_GID = "40512512";
+const GOOGLE_SHEET_META_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit?gid=${GOOGLE_SHEET_META_GID}#gid=${GOOGLE_SHEET_META_GID}`;
+const GOOGLE_SHEET_ITINERARY_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit?gid=${GOOGLE_SHEET_ITINERARY_GID}#gid=${GOOGLE_SHEET_ITINERARY_GID}`;
+const GOOGLE_SHEET_META_TSV_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/export?format=tsv&gid=${GOOGLE_SHEET_META_GID}`;
+const GOOGLE_SHEET_ITINERARY_TSV_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/export?format=tsv&gid=${GOOGLE_SHEET_ITINERARY_GID}`;
 const SHEET_SYNC_INTERVAL_MS = 60000;
 
 const tabs = [
@@ -444,15 +447,152 @@ function parseTsv(text) {
     .map((line) => line.replace(/\r$/, "").split("\t"));
 }
 
-async function fetchSheetData() {
-  const response = await fetch(`${GOOGLE_SHEET_TSV_URL}&cachebust=${Date.now()}`);
+function formatSheetDateValue(value) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  const serial = Number(raw);
+  if (!Number.isFinite(serial) || !/^\d+(\.\d+)?$/.test(raw) || serial < 40000) {
+    return raw;
+  }
+
+  const utcTime = Date.UTC(1899, 11, 30) + Math.round(serial) * 86400000;
+  const date = new Date(utcTime);
+  return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
+}
+
+function buildEditableItineraryFromRows(rows, baseItinerary) {
+  if (!Array.isArray(rows) || rows.length <= 1) {
+    return structuredClone(baseItinerary);
+  }
+
+  const itinerary = structuredClone(baseItinerary).map((day, index) => ({
+    ...createBlankDay(index + 1),
+    ...day,
+    highlight: {
+      ...createBlankDay(index + 1).highlight,
+      ...(day.highlight || {})
+    },
+    events: []
+  }));
+
+  rows.slice(1).forEach((row) => {
+    const [
+      dayValue = "",
+      eventValue = "",
+      date = "",
+      dayTitle = "",
+      mode = "",
+      route = "",
+      stay = "",
+      drive = "",
+      mapFocus = "",
+      offlineSummary = "",
+      highlightTitle = "",
+      highlightImageUrl = "",
+      highlightCaption = "",
+      highlightPrompt = "",
+      time = "",
+      title = "",
+      duration = "",
+      cost = "",
+      tag = "",
+      mapQuery = "",
+      note = "",
+      offlineNote = "",
+      link1Label = "",
+      link1Url = "",
+      link2Label = "",
+      link2Url = "",
+      link3Label = "",
+      link3Url = ""
+    ] = row.map((cell) => decodeSheetValue(cell));
+
+    const dayIndex = toNumber(dayValue) - 1;
+    if (dayIndex < 0) {
+      return;
+    }
+
+    ensureArraySize(itinerary, dayIndex + 1, (index) => createBlankDay(index + 1));
+    const day = itinerary[dayIndex];
+
+    day.day = dayIndex + 1;
+    day.date = formatSheetDateValue(date) || day.date;
+    day.title = dayTitle || day.title;
+    day.mode = mode || day.mode;
+    day.route = route || day.route;
+    day.stay = stay || day.stay;
+    day.drive = drive || day.drive;
+    day.mapFocus = mapFocus || day.mapFocus;
+    day.offlineSummary = offlineSummary || day.offlineSummary;
+    day.highlight = {
+      title: highlightTitle || day.highlight?.title || "",
+      imageUrl: highlightImageUrl || day.highlight?.imageUrl || "",
+      caption: highlightCaption || day.highlight?.caption || "",
+      prompt: highlightPrompt || day.highlight?.prompt || ""
+    };
+
+    if (!eventValue && !title && !time && !note && !mapQuery) {
+      return;
+    }
+
+    const eventIndex = Math.max(toNumber(eventValue) - 1, 0);
+    ensureArraySize(day.events, eventIndex + 1, () => createBlankEvent());
+
+    const links = [
+      [link1Label, link1Url],
+      [link2Label, link2Url],
+      [link3Label, link3Url]
+    ]
+      .filter(([label, url]) => label || url)
+      .map(([label, url]) => ({ label, url }));
+
+    day.events[eventIndex] = {
+      ...createBlankEvent(),
+      ...day.events[eventIndex],
+      time,
+      title,
+      duration,
+      cost,
+      tag,
+      mapQuery,
+      note,
+      offlineNote,
+      links
+    };
+  });
+
+  return itinerary.map((day, index) => ({
+    ...createBlankDay(index + 1),
+    ...day,
+    highlight: {
+      ...createBlankDay(index + 1).highlight,
+      ...(day.highlight || {})
+    },
+    events: (day.events || []).filter((event) => event && (event.title || event.note || event.mapQuery))
+  }));
+}
+
+async function fetchTsvRows(url) {
+  const response = await fetch(`${url}&cachebust=${Date.now()}`);
   if (!response.ok) {
     throw new Error(`Google Sheet 讀取失敗 (${response.status})`);
   }
 
   const text = await response.text();
-  const rows = parseTsv(text);
-  return buildDataFromSheetRows(rows);
+  return parseTsv(text);
+}
+
+async function fetchSheetData() {
+  const [metaRows, itineraryRows] = await Promise.all([
+    fetchTsvRows(GOOGLE_SHEET_META_TSV_URL),
+    fetchTsvRows(GOOGLE_SHEET_ITINERARY_TSV_URL)
+  ]);
+  const data = buildDataFromSheetRows(metaRows);
+  data.itinerary = buildEditableItineraryFromRows(itineraryRows, data.itinerary);
+  return data;
 }
 
 async function syncSheetData({ resetLocalDraft = false } = {}) {
@@ -1468,7 +1608,7 @@ function renderEditor() {
           <span class="save-status ${state.sheetError ? "dirty" : ""}">
             ${state.sheetError ? `同步失敗：${state.sheetError}` : formatSyncTime()}
           </span>
-          <span class="muted">目前正式來源：<a class="inline-link" href="${GOOGLE_SHEET_URL}" target="_blank" rel="noreferrer">Google Sheet 的網站資料分頁</a>，旅伴重新整理後會看到這份內容。</span>
+          <span class="muted">目前正式來源分成兩份：<a class="inline-link" href="${GOOGLE_SHEET_META_URL}" target="_blank" rel="noreferrer">網站資料</a> 供總覽與花費，<a class="inline-link" href="${GOOGLE_SHEET_ITINERARY_URL}" target="_blank" rel="noreferrer">editable-itinerary</a> 供每日行程。旅伴重新整理後會看到這兩份正式資料。</span>
         </div>
         <div class="editor-toolbar compact">
           <button class="action-button small" id="sync-sheet-button" ${state.syncInProgress ? "disabled" : ""}>
