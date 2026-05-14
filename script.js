@@ -53,6 +53,7 @@ const state = {
   sheetError: "",
   sheetBaseData: structuredClone(window.defaultTripData),
   localDraft: null,
+  localDraftEnabled: false,
   data: structuredClone(window.defaultTripData)
 };
 
@@ -181,6 +182,7 @@ function loadLocalDraft() {
 function saveData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
   state.localDraft = structuredClone(state.data);
+  state.localDraftEnabled = true;
   state.editorDirty = false;
   state.lastSavedAt = Date.now();
 }
@@ -188,10 +190,11 @@ function saveData() {
 function clearLocalDraft() {
   localStorage.removeItem(STORAGE_KEY);
   state.localDraft = null;
+  state.localDraftEnabled = false;
 }
 
 function applyDataSources() {
-  state.data = state.localDraft
+  state.data = state.localDraft && state.localDraftEnabled
     ? hydrateData(state.localDraft, state.sheetBaseData)
     : structuredClone(state.sheetBaseData);
 }
@@ -1482,9 +1485,20 @@ function renderEditor() {
           <span id="editor-save-status" class="save-status ${state.editorDirty ? "dirty" : ""}">
             ${state.editorDirty ? "尚未儲存" : formatSavedAt()}
           </span>
-          <span class="muted">這裡按儲存只會存到你目前這台裝置的瀏覽器，不會直接回寫 Google Sheet。</span>
+          <span class="muted">
+            ${state.localDraft
+              ? state.localDraftEnabled
+                ? "目前正在套用這台裝置的本機草稿，所以你看到的內容可能和 Google Sheet 正式版本不同。"
+                : "這台裝置有舊的本機草稿，但目前公開站預設顯示 Google Sheet 正式版本。"
+              : "這裡按儲存只會存到你目前這台裝置的瀏覽器，不會直接回寫 Google Sheet。"}
+          </span>
         </div>
-        <button class="action-button small" id="save-all-button">儲存全部編輯</button>
+        <div class="editor-toolbar compact">
+          ${state.localDraft && !state.localDraftEnabled
+            ? '<button class="action-button ghost small" id="apply-local-draft-button">套用這台裝置的本機草稿</button>'
+            : ""}
+          <button class="action-button small" id="save-all-button">儲存全部編輯</button>
+        </div>
       </div>
       <div class="editor-toolbar">
         <button class="action-button small" id="save-json-button">套用整份 JSON</button>
@@ -1698,6 +1712,12 @@ function renderEditor() {
   panelMap.editor.querySelector("#reset-data-button").addEventListener("click", resetData);
   panelMap.editor.querySelector("#sync-sheet-button").addEventListener("click", () => syncSheetData());
   panelMap.editor.querySelector("#reset-to-sheet-button").addEventListener("click", () => syncSheetData({ resetLocalDraft: true }));
+  panelMap.editor.querySelector("#apply-local-draft-button")?.addEventListener("click", () => {
+    state.localDraftEnabled = true;
+    applyDataSources();
+    renderAll();
+    setActiveTab("editor");
+  });
   panelMap.editor.querySelector("#clear-hero-image").addEventListener("click", async () => {
     await deleteImageData(state.data.heroImage.url);
     state.data.heroImage.url = "";
@@ -2002,6 +2022,7 @@ function renderAll() {
 
 async function initializeApp() {
   state.localDraft = loadLocalDraft();
+  state.localDraftEnabled = false;
   applyDataSources();
 
   try {
