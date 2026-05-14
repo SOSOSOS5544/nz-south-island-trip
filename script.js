@@ -1,4 +1,5 @@
 const STORAGE_KEY = "nz-south-island-trip-data-v4";
+const LEGACY_STORAGE_KEYS = ["nz-south-island-trip-data-v3", "nz-south-island-trip-data-v2"];
 const IMAGE_DB_NAME = "nz-south-island-trip-images";
 const IMAGE_STORE_NAME = "images";
 const IMAGE_REF_PREFIX = "idb-image:";
@@ -106,15 +107,52 @@ function hydrateData(stored) {
 
 function loadData() {
   const stored = localStorage.getItem(STORAGE_KEY);
-  if (!stored) {
-    return structuredClone(window.defaultTripData);
+  const base = structuredClone(window.defaultTripData);
+
+  let currentData = base;
+  if (stored) {
+    try {
+      currentData = hydrateData(JSON.parse(stored));
+    } catch {
+      currentData = base;
+    }
   }
 
-  try {
-    return hydrateData(JSON.parse(stored));
-  } catch {
-    return structuredClone(window.defaultTripData);
+  let recovered = false;
+  for (const legacyKey of LEGACY_STORAGE_KEYS) {
+    const legacyStored = localStorage.getItem(legacyKey);
+    if (!legacyStored) {
+      continue;
+    }
+
+    try {
+      const legacyData = hydrateData(JSON.parse(legacyStored));
+
+      if (
+        JSON.stringify(legacyData.preTrip) !== JSON.stringify(base.preTrip) &&
+        JSON.stringify(currentData.preTrip) === JSON.stringify(base.preTrip)
+      ) {
+        currentData.preTrip = structuredClone(legacyData.preTrip);
+        recovered = true;
+      }
+
+      if (
+        JSON.stringify(legacyData.costs?.required) !== JSON.stringify(base.costs.required) &&
+        JSON.stringify(currentData.costs?.required) === JSON.stringify(base.costs.required)
+      ) {
+        currentData.costs.required = structuredClone(legacyData.costs.required);
+        recovered = true;
+      }
+    } catch {
+      // Ignore unreadable legacy drafts.
+    }
   }
+
+  if (recovered) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(currentData));
+  }
+
+  return currentData;
 }
 
 function saveData() {
