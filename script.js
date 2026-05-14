@@ -1,8 +1,17 @@
-const STORAGE_KEY = "nz-south-island-trip-data-v4";
-const LEGACY_STORAGE_KEYS = ["nz-south-island-trip-data-v3", "nz-south-island-trip-data-v2"];
+const STORAGE_KEY = "nz-south-island-trip-data-v5";
+const LEGACY_STORAGE_KEYS = [
+  "nz-south-island-trip-data-v4",
+  "nz-south-island-trip-data-v3",
+  "nz-south-island-trip-data-v2"
+];
 const IMAGE_DB_NAME = "nz-south-island-trip-images";
 const IMAGE_STORE_NAME = "images";
 const IMAGE_REF_PREFIX = "idb-image:";
+const GOOGLE_SHEET_ID = "16Lw_wvC0brbbkvOyXk4X1OIxyhGj2vKizif2kIgxuDA";
+const GOOGLE_SHEET_GID = "103924319";
+const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/edit?gid=${GOOGLE_SHEET_GID}#gid=${GOOGLE_SHEET_GID}`;
+const GOOGLE_SHEET_TSV_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/export?format=tsv&gid=${GOOGLE_SHEET_GID}`;
+const SHEET_SYNC_INTERVAL_MS = 60000;
 
 const tabs = [
   { id: "overview", label: "總覽" },
@@ -39,11 +48,16 @@ const state = {
   imageMetaCache: {},
   pendingImageLoads: new Set(),
   pendingImageMetaLoads: new Set(),
-  data: loadData()
+  syncInProgress: false,
+  sheetLoadedAt: null,
+  sheetError: "",
+  sheetBaseData: structuredClone(window.defaultTripData),
+  localDraft: null,
+  data: structuredClone(window.defaultTripData)
 };
 
-function hydrateData(stored) {
-  const base = structuredClone(window.defaultTripData);
+function hydrateData(stored, baseData = window.defaultTripData) {
+  const base = structuredClone(baseData);
   if (!stored || typeof stored !== "object") {
     return base;
   }
@@ -105,16 +119,14 @@ function hydrateData(stored) {
   return merged;
 }
 
-function loadData() {
+function loadLocalDraft() {
   const stored = localStorage.getItem(STORAGE_KEY);
-  const base = structuredClone(window.defaultTripData);
-
-  let currentData = base;
+  let currentData = null;
   if (stored) {
     try {
-      currentData = hydrateData(JSON.parse(stored));
+      currentData = JSON.parse(stored);
     } catch {
-      currentData = base;
+      currentData = null;
     }
   }
 
@@ -126,20 +138,31 @@ function loadData() {
     }
 
     try {
-      const legacyData = hydrateData(JSON.parse(legacyStored));
+      const legacyData = JSON.parse(legacyStored);
+      if (!currentData) {
+        currentData = legacyData;
+        recovered = true;
+        continue;
+      }
+      const legacyHydrated = hydrateData(legacyData);
+      const currentHydrated = currentData ? hydrateData(currentData) : structuredClone(window.defaultTripData);
+      const base = structuredClone(window.defaultTripData);
 
       if (
-        JSON.stringify(legacyData.preTrip) !== JSON.stringify(base.preTrip) &&
-        JSON.stringify(currentData.preTrip) === JSON.stringify(base.preTrip)
+        JSON.stringify(legacyHydrated.preTrip) !== JSON.stringify(base.preTrip) &&
+        JSON.stringify(currentHydrated.preTrip) === JSON.stringify(base.preTrip)
       ) {
-        currentData.preTrip = structuredClone(legacyData.preTrip);
+        currentData = currentData || {};
+        currentData.preTrip = structuredClone(legacyHydrated.preTrip);
         recovered = true;
       }
 
       if (
-        JSON.stringify(legacyData.costs?.required) !== JSON.stringify(base.costs.required) &&
-        JSON.stringify(currentData.costs?.required) === JSON.stringify(base.costs.required)
+        JSON.stringify(legacyHydrated.costs?.required) !== JSON.stringify(base.costs.required) &&
+        JSON.stringify(currentHydrated.costs?.required) === JSON.stringify(base.costs.required)
       ) {
+        currentData = currentData || {};
+        currentData.costs = currentData.costs || {};
         currentData.costs.required = structuredClone(legacyData.costs.required);
         recovered = true;
       }
@@ -157,8 +180,313 @@ function loadData() {
 
 function saveData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
+  state.localDraft = structuredClone(state.data);
   state.editorDirty = false;
   state.lastSavedAt = Date.now();
+}
+
+function clearLocalDraft() {
+  localStorage.removeItem(STORAGE_KEY);
+  state.localDraft = null;
+}
+
+function applyDataSources() {
+  state.data = state.localDraft
+    ? hydrateData(state.localDraft, state.sheetBaseData)
+    : structuredClone(state.sheetBaseData);
+}
+
+function decodeSheetValue(value) {
+  return String(value || "").replaceAll(" ⏎ ", "\n");
+}
+
+function toNumber(value) {
+  return Number.parseInt(value, 10) || 0;
+}
+
+function ensureArraySize(target, size, factory) {
+  while (target.length < size) {
+    target.push(factory(target.length));
+  }
+}
+
+function createBlankDay(dayNumber) {
+  return {
+    day: dayNumber,
+    date: "",
+    title: "",
+    highlight: {
+      title: "",
+      imageUrl: "",
+      caption: "",
+      prompt: ""
+    },
+    mode: "",
+    route: "",
+    stay: "",
+    drive: "",
+    mapFocus: "",
+    offlineSummary: "",
+    events: []
+  };
+}
+
+function createBlankEvent() {
+  return {
+    time: "",
+    title: "",
+    duration: "",
+    cost: "",
+    tag: "",
+    mapQuery: "",
+    note: "",
+    offlineNote: "",
+    links: []
+  };
+}
+
+function buildDataFromSheetRows(rows) {
+  const base = structuredClone(window.defaultTripData);
+  if (!Array.isArray(rows) || rows.length <= 1) {
+    return base;
+  }
+
+  const data = structuredClone(base);
+  const itineraryDays = [];
+  const flightMap = [];
+  const airfare = [];
+  const daylight = [];
+  const onlineNavigation = [];
+  const offlineNavigation = [];
+  const preTripGroups = [];
+  const requiredCosts = [];
+  const extrasCosts = [];
+  const alreadyPaid = [];
+  const paidLinks = [];
+  const fieldBudget = [];
+  const journalRows = [];
+  const sectionTitles = { ...(base.overview?.sectionTitles || {}) };
+
+  rows.slice(1).forEach((row) => {
+    const [section, key1, key2, key3, value1 = "", value2 = "", value3 = "", value4 = "", value5 = ""] = row;
+    const v1 = decodeSheetValue(value1);
+    const v2 = decodeSheetValue(value2);
+    const v3 = decodeSheetValue(value3);
+    const v4 = decodeSheetValue(value4);
+    const v5 = decodeSheetValue(value5);
+
+    if (!section) {
+      return;
+    }
+
+    switch (section) {
+      case "site_meta":
+        if (key1 === "title") data.title = v1;
+        if (key1 === "period") data.period = v1;
+        if (key1 === "travelers") data.travelers = v1;
+        if (key1 === "heroImage" && key2 === "url") data.heroImage.url = v1;
+        if (key1 === "heroImage" && key2 === "alt") data.heroImage.alt = v1;
+        if (key1 === "overviewImage" && key2 === "url") data.overviewImage.url = v1;
+        if (key1 === "overviewImage" && key2 === "alt") data.overviewImage.alt = v1;
+        if (key1 === "posterStyle" && key2 === "title") data.posterStyle.title = v1;
+        if (key1 === "posterStyle" && key2 === "prompt") data.posterStyle.prompt = v1;
+        break;
+      case "overview_journal":
+        if (key1 === "coverTitle") {
+          data.overview.coverTitle = v1;
+        } else if (key1 === "journalTitle") {
+          data.overview.journalTitle = v1;
+        } else if (key1 === "row") {
+          journalRows[toNumber(key2) - 1] = { label: v1, text: v2 };
+        } else if (key1 === "sectionTitle") {
+          sectionTitles[key2] = v1;
+        }
+        break;
+      case "pretrip": {
+        const groupIndex = toNumber(key2) - 1;
+        ensureArraySize(preTripGroups, groupIndex + 1, () => ({ title: "", items: [] }));
+        if (key3 === "title") {
+          preTripGroups[groupIndex].title = v1;
+        } else {
+          preTripGroups[groupIndex].items[toNumber(key3) - 1] = v1;
+        }
+        break;
+      }
+      case "cost_required":
+        requiredCosts[toNumber(key1) - 1] = [v1, v2];
+        break;
+      case "cost_extras":
+        extrasCosts[toNumber(key1) - 1] = [v1, v2];
+        break;
+      case "cost_paid":
+        alreadyPaid[toNumber(key1) - 1] = [v1, v2, v3];
+        break;
+      case "cost_paid_links":
+        paidLinks[toNumber(key1) - 1] = { title: v1, label: v2, url: v3 };
+        break;
+      case "cost_field_budget":
+        fieldBudget[toNumber(key1) - 1] = [v1, v2, v3, v4];
+        break;
+      case "cost_totals":
+        if (key1 === "fixedSubtotal") data.costs.fixedSubtotal = v1;
+        if (key1 === "flexibleBudget") data.costs.flexibleBudget = v1;
+        break;
+      case "flights": {
+        const flightIndex = toNumber(key1) - 1;
+        ensureArraySize(flightMap, flightIndex + 1, () => ({ date: "", title: "", notes: [] }));
+        if (key2 === "date") flightMap[flightIndex].date = v1;
+        if (key2 === "title") flightMap[flightIndex].title = v1;
+        if (key2 === "note") flightMap[flightIndex].notes[toNumber(key3) - 1] = v1;
+        break;
+      }
+      case "airfare":
+        airfare[toNumber(key1) - 1] = { traveler: v1, detail: v2 };
+        break;
+      case "daylight":
+        daylight[toNumber(key1) - 1] = { month: v1, sunrise: v2, sunset: v3, duration: v4 };
+        break;
+      case "online_navigation":
+        onlineNavigation[toNumber(key1) - 1] = { name: v1, description: v2 };
+        break;
+      case "offline_navigation":
+        offlineNavigation[toNumber(key1) - 1] = { name: v1, description: v2 };
+        break;
+      case "itinerary_days": {
+        const dayIndex = toNumber(key1) - 1;
+        ensureArraySize(itineraryDays, dayIndex + 1, (index) => createBlankDay(index + 1));
+        const day = itineraryDays[dayIndex];
+        if (key2 === "date") day.date = v1;
+        if (key2 === "title") day.title = v1;
+        if (key2 === "mode") day.mode = v1;
+        if (key2 === "route") day.route = v1;
+        if (key2 === "stay") day.stay = v1;
+        if (key2 === "drive") day.drive = v1;
+        if (key2 === "mapFocus") day.mapFocus = v1;
+        if (key2 === "offlineSummary") day.offlineSummary = v1;
+        if (key2 === "highlightTitle") day.highlight.title = v1;
+        if (key2 === "highlightImageUrl") day.highlight.imageUrl = v1;
+        if (key2 === "highlightCaption") day.highlight.caption = v1;
+        if (key2 === "highlightPrompt") day.highlight.prompt = v1;
+        break;
+      }
+      case "itinerary_events":
+      case "itinerary_event_links": {
+        const dayIndex = toNumber(key1) - 1;
+        const eventIndex = toNumber(key2) - 1;
+        ensureArraySize(itineraryDays, dayIndex + 1, (index) => createBlankDay(index + 1));
+        ensureArraySize(itineraryDays[dayIndex].events, eventIndex + 1, () => createBlankEvent());
+        const event = itineraryDays[dayIndex].events[eventIndex];
+        if (section === "itinerary_events") {
+          if (key3 === "time") event.time = v1;
+          if (key3 === "title") event.title = v1;
+          if (key3 === "duration") event.duration = v1;
+          if (key3 === "cost") event.cost = v1;
+          if (key3 === "tag") event.tag = v1;
+          if (key3 === "mapQuery") event.mapQuery = v1;
+          if (key3 === "note") event.note = v1;
+          if (key3 === "offlineNote") event.offlineNote = v1;
+        } else {
+          event.links[toNumber(key3) - 1] = { label: v1, url: v2 };
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  });
+
+  if (journalRows.filter(Boolean).length) {
+    data.overview.journalRows = journalRows.filter(Boolean);
+  }
+
+  data.overview.sectionTitles = sectionTitles;
+  if (preTripGroups.filter(Boolean).length) {
+    data.preTrip = preTripGroups.filter(Boolean).map((group) => ({
+      title: group.title,
+      items: (group.items || []).filter(Boolean)
+    }));
+  }
+
+  if (requiredCosts.filter(Boolean).length) data.costs.required = requiredCosts.filter(Boolean);
+  if (extrasCosts.filter(Boolean).length) data.costs.extras = extrasCosts.filter(Boolean);
+  if (alreadyPaid.filter(Boolean).length) data.costs.alreadyPaid = alreadyPaid.filter(Boolean);
+  data.costs.paidLinks = paidLinks.filter(Boolean);
+  if (fieldBudget.filter(Boolean).length) data.costs.fieldBudget = fieldBudget.filter(Boolean);
+  if (flightMap.filter(Boolean).length) {
+    data.flights = flightMap.filter(Boolean).map((flight) => ({ ...flight, notes: (flight.notes || []).filter(Boolean) }));
+  }
+  if (airfare.filter(Boolean).length) data.airfare = airfare.filter(Boolean);
+  if (daylight.filter(Boolean).length) data.daylight = daylight.filter(Boolean);
+  if (onlineNavigation.filter(Boolean).length) data.onlineNavigation = onlineNavigation.filter(Boolean);
+  if (offlineNavigation.filter(Boolean).length) data.offlineNavigation = offlineNavigation.filter(Boolean);
+  if (itineraryDays.filter(Boolean).length) {
+    data.itinerary = itineraryDays.filter(Boolean).map((day, index) => ({
+      ...createBlankDay(index + 1),
+      ...day,
+      events: (day.events || []).filter(Boolean).map((event) => ({
+        ...createBlankEvent(),
+        ...event,
+        links: (event.links || []).filter(Boolean)
+      }))
+    }));
+  }
+
+  return data;
+}
+
+function parseTsv(text) {
+  return text
+    .trim()
+    .split("\n")
+    .map((line) => line.replace(/\r$/, "").split("\t"));
+}
+
+async function fetchSheetData() {
+  const response = await fetch(`${GOOGLE_SHEET_TSV_URL}&cachebust=${Date.now()}`);
+  if (!response.ok) {
+    throw new Error(`Google Sheet 讀取失敗 (${response.status})`);
+  }
+
+  const text = await response.text();
+  const rows = parseTsv(text);
+  return buildDataFromSheetRows(rows);
+}
+
+async function syncSheetData({ resetLocalDraft = false } = {}) {
+  state.syncInProgress = true;
+  state.sheetError = "";
+  renderEditor();
+  setActiveTab(state.activeTab);
+
+  try {
+    const remoteData = await fetchSheetData();
+    state.sheetBaseData = remoteData;
+    state.sheetLoadedAt = Date.now();
+    if (resetLocalDraft) {
+      clearLocalDraft();
+    }
+    applyDataSources();
+    renderAll();
+  } catch (error) {
+    state.sheetError = error.message;
+    renderEditor();
+    setActiveTab(state.activeTab);
+  } finally {
+    state.syncInProgress = false;
+    renderEditor();
+    setActiveTab(state.activeTab);
+  }
+}
+
+function formatSyncTime() {
+  if (!state.sheetLoadedAt) {
+    return "尚未同步";
+  }
+
+  return `已同步 ${new Date(state.sheetLoadedAt).toLocaleTimeString("zh-Hant", {
+    hour: "2-digit",
+    minute: "2-digit"
+  })}`;
 }
 
 function formatSavedAt() {
@@ -1133,10 +1461,28 @@ function renderEditor() {
     <div class="surface">
       <div class="editor-savebar">
         <div class="editor-savecopy">
-          <strong>編輯狀態</strong>
+          <strong>Google Sheet 正式資料</strong>
+          <span class="save-status ${state.sheetError ? "dirty" : ""}">
+            ${state.sheetError ? `同步失敗：${state.sheetError}` : formatSyncTime()}
+          </span>
+          <span class="muted">目前正式來源：<a class="inline-link" href="${GOOGLE_SHEET_URL}" target="_blank" rel="noreferrer">Google Sheet 的網站資料分頁</a>，旅伴重新整理後會看到這份內容。</span>
+        </div>
+        <div class="editor-toolbar compact">
+          <button class="action-button small" id="sync-sheet-button" ${state.syncInProgress ? "disabled" : ""}>
+            ${state.syncInProgress ? "同步中..." : "重新同步 Google Sheet"}
+          </button>
+          <button class="action-button ghost small" id="reset-to-sheet-button" ${state.syncInProgress ? "disabled" : ""}>
+            清除本機草稿並套用 Google Sheet
+          </button>
+        </div>
+      </div>
+      <div class="editor-savebar">
+        <div class="editor-savecopy">
+          <strong>本機草稿編輯</strong>
           <span id="editor-save-status" class="save-status ${state.editorDirty ? "dirty" : ""}">
             ${state.editorDirty ? "尚未儲存" : formatSavedAt()}
           </span>
+          <span class="muted">這裡按儲存只會存到你目前這台裝置的瀏覽器，不會直接回寫 Google Sheet。</span>
         </div>
         <button class="action-button small" id="save-all-button">儲存全部編輯</button>
       </div>
@@ -1350,6 +1696,8 @@ function renderEditor() {
   panelMap.editor.querySelector("#export-json-button").addEventListener("click", exportJson);
   panelMap.editor.querySelector("#export-share-button").addEventListener("click", exportShareData);
   panelMap.editor.querySelector("#reset-data-button").addEventListener("click", resetData);
+  panelMap.editor.querySelector("#sync-sheet-button").addEventListener("click", () => syncSheetData());
+  panelMap.editor.querySelector("#reset-to-sheet-button").addEventListener("click", () => syncSheetData({ resetLocalDraft: true }));
   panelMap.editor.querySelector("#clear-hero-image").addEventListener("click", async () => {
     await deleteImageData(state.data.heroImage.url);
     state.data.heroImage.url = "";
@@ -1628,11 +1976,13 @@ async function exportShareData() {
 }
 
 function resetData() {
-  state.data = structuredClone(window.defaultTripData);
+  clearLocalDraft();
+  state.data = structuredClone(state.sheetBaseData);
   state.dayIndex = 0;
   state.mapEventIndex = 0;
   state.editorDayIndex = 0;
-  saveData();
+  state.editorDirty = false;
+  state.lastSavedAt = null;
   renderAll();
   setActiveTab("editor");
 }
@@ -1651,6 +2001,9 @@ function renderAll() {
 }
 
 async function initializeApp() {
+  state.localDraft = loadLocalDraft();
+  applyDataSources();
+
   try {
     await migrateEmbeddedImages();
   } catch (error) {
@@ -1658,6 +2011,10 @@ async function initializeApp() {
   }
 
   renderAll();
+  await syncSheetData();
+  window.setInterval(() => {
+    syncSheetData();
+  }, SHEET_SYNC_INTERVAL_MS);
 }
 
 initializeApp();
